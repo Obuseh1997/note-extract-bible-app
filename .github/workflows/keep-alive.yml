@@ -1,0 +1,12 @@
+name: Keep Alive
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit app
+        run: curl -sf https://note-extract-bible-app.streamlit.app > /dev/null
