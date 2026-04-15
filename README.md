@@ -1,12 +1,12 @@
 # YouVersion Notes & Highlights Exporter
 
-Export your Bible notes and highlights from [YouVersion](https://bible.com) as clean markdown files.
+Export your Bible notes from [YouVersion](https://bible.com) as a clean, searchable markdown file.
 
 ## What it does
 
-- Extracts all your **notes** (with verse text and your written reflections)
-- Extracts all your **highlights** (with verse text and color)
+- Extracts all your **notes** (verse reference + your written reflections)
 - Outputs a single `.md` file you can import into Apple Notes, Obsidian, or any markdown app
+- Makes your notes **searchable** across all your Bible reading
 
 ## Privacy
 
@@ -16,18 +16,22 @@ Export your Bible notes and highlights from [YouVersion](https://bible.com) as c
 
 ---
 
-## Option 1: Web App (non-technical)
+## Option 1: Web App (easiest)
 
-Visit the hosted Streamlit app (URL TBD) and follow the prompts.
+Visit **[note-extract-bible-app.streamlit.app](https://note-extract-bible-app.streamlit.app)** — no setup needed.
 
-To run it locally:
+### How to get your auth token (for Google Sign-In users)
 
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+1. Open [bible.com](https://www.bible.com) in your browser and log in
+2. Open Developer Tools (`F12` on Windows / `Cmd+Option+I` on Mac)
+3. Go to **Application** tab → **Storage** → **Cookies** → `https://www.bible.com`
+4. Find the cookie named **`yva`** (it starts with `eyJhbGci...`)
+5. Click the row and copy the full value from the Value field
+6. Paste it into the web app when prompted
 
-## Option 2: CLI (technical)
+---
+
+## Option 2: CLI (technical users)
 
 ### Setup
 
@@ -39,25 +43,19 @@ pip install -r requirements.txt
 
 ### Usage
 
-**If you have a YouVersion email/password:**
-
-```bash
-python cli.py --username your@email.com --password yourpassword
-```
-
-**If you use Google Sign-In:**
+**Google Sign-In (most users):**
 
 ```bash
 python cli.py
 ```
 
-You'll be guided to grab your auth token from bible.com's browser cookies. Steps:
+Follow the prompt — paste your `yva` cookie value from bible.com DevTools (same steps as above).
 
-1. Open https://www.bible.com in your browser and log in
-2. Open Developer Tools (F12 or Cmd+Option+I)
-3. Go to **Application** tab > **Cookies** > `bible.com`
-4. Find the cookie named `token` or `access_token`
-5. Paste it when the CLI prompts you
+**Email/password login:**
+
+```bash
+python cli.py --username your@email.com --password yourpassword
+```
 
 ### Options
 
@@ -69,41 +67,29 @@ You'll be guided to grab your auth token from bible.com's browser cookies. Steps
 --password      YouVersion password (for password auth)
 ```
 
-### Environment variables
-
-You can also set these instead of using CLI flags:
-
-```bash
-export YV_TOKEN="your-token-here"
-export YV_USER_ID="12345678"
-python cli.py
-```
+---
 
 ## Output format
 
 ```markdown
 # My YouVersion Notes & Highlights
-Exported: 2026-04-13
+Exported: 2026-04-14
 
-**5 notes** | **12 highlights**
+**112 notes** | **270 highlights**
 
 ---
 
 ## Notes
 
-### 1 Samuel 16:14 (NLT)  <sub>2025-04-13</sub>
-
-> Now the Spirit of the Lord had left Saul...
+### 1 Samuel 16:14  <sub>2025-04-13</sub>
 
 **My note:** Depression is a spirit.
 
 ---
 
-## Highlights
+### Romans 8:28  <sub>2025-03-01</sub>
 
-### Psalms 34:19 (NLT) 🟡  <sub>2025-04-13</sub>
-
-> The righteous person faces many troubles, but the Lord comes to the rescue each time.
+**My note:** God works all things together for good.
 
 ---
 ```
@@ -111,4 +97,4 @@ Exported: 2026-04-13
 ## Requirements
 
 - Python 3.10+
-- A YouVersion account with notes/highlights
+- A YouVersion account with notes
