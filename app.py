@@ -33,6 +33,11 @@ with st.expander("Output options", expanded=False):
         value=True,
         help="Adds a clickable TOC at the top, grouped by book.",
     )
+    include_related = st.checkbox(
+        "Include related scriptures (AI-powered)",
+        value=True,
+        help="For each note, surfaces 5 thematically related Bible verses using local semantic search. Adds a few seconds to export time.",
+    )
 
 # --- Auth Selection ---
 auth_method = st.radio(
@@ -169,10 +174,15 @@ if token and user_id:
         st.warning("No notes or highlights found. Double-check your credentials.")
         st.stop()
 
+    if include_related:
+        progress_bar.progress(1.0, text="Finding related scriptures...")
+
     markdown = format_markdown(
         data,
         group_by_book=group_by_book,
         include_toc=include_toc,
+        include_related=include_related,
+        top_k=5,
     )
 
     progress_bar.empty()

@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 # Canonical book order (66 books) for sorting
 BOOK_ORDER = [
@@ -104,6 +104,8 @@ def format_markdown(
     data: dict[str, list[dict[str, Any]]],
     group_by_book: bool = True,
     include_toc: bool = True,
+    include_related: bool = False,
+    top_k: int = 5,
 ) -> str:
     """Convert extracted notes and highlights to a markdown string.
 
@@ -177,8 +179,10 @@ def format_markdown(
             lines.append(f"### {book}")
             lines.append("")
             for item in notes_by_book[book]:
-                # Inline render (no extra ### headers — use the ref as a sub-heading)
-                lines.extend(_render_item_under_book(item, kind="note"))
+                lines.extend(_render_item_under_book(
+                    item, kind="note",
+                    include_related=include_related, top_k=top_k,
+                ))
 
     # Highlights section
     if highlights_by_book:
@@ -189,12 +193,20 @@ def format_markdown(
             lines.append(f"### {book}")
             lines.append("")
             for item in highlights_by_book[book]:
-                lines.extend(_render_item_under_book(item, kind="highlight"))
+                lines.extend(_render_item_under_book(
+                    item, kind="highlight",
+                    include_related=False,
+                ))
 
     return "\n".join(lines)
 
 
-def _render_item_under_book(item: dict[str, Any], kind: str) -> list[str]:
+def _render_item_under_book(
+    item: dict[str, Any],
+    kind: str,
+    include_related: bool = False,
+    top_k: int = 5,
+) -> list[str]:
     """Render an item nested under a book heading (uses #### for ref)."""
     lines = []
     ref = item["reference"]
@@ -212,9 +224,33 @@ def _render_item_under_book(item: dict[str, Any], kind: str) -> list[str]:
     lines.append(header)
     lines.append("")
 
+    # Noted verse text (KJV) — pulled from the Bible index
+    try:
+        from scripture_search import get_verse_text
+        verse_text = get_verse_text(ref)
+        if verse_text:
+            lines.append(f"> *{verse_text}*")
+            lines.append("")
+    except Exception:
+        pass  # Index not available — skip silently
+
     if note_text:
         lines.append(f"**My note:** {note_text}")
         lines.append("")
+
+    # Related scriptures (notes only, not highlights)
+    if include_related and kind == "note" and note_text:
+        try:
+            from scripture_search import find_related
+            related = find_related(note_text, top_k=top_k, exclude_ref=ref)
+            if related:
+                lines.append("🔗 **Related scriptures**")
+                lines.append("")
+                for r in related:
+                    lines.append(f"- **{r['reference']}** — *{r['snippet']}*")
+                lines.append("")
+        except Exception:
+            pass  # Index not available — skip silently
 
     return lines
 

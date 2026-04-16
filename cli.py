@@ -37,6 +37,7 @@ async def run_export(
     output_path: str,
     group_by_book: bool,
     include_toc: bool,
+    include_related: bool = True,
 ) -> None:
     """Run the full export pipeline."""
     print("\nStarting export...\n")
@@ -59,8 +60,14 @@ async def run_export(
         print("\nNo notes or highlights found. Check your credentials and try again.")
         sys.exit(1)
 
+    if include_related:
+        print("\nFinding related scriptures...")
     markdown = format_markdown(
-        data, group_by_book=group_by_book, include_toc=include_toc
+        data,
+        group_by_book=group_by_book,
+        include_toc=include_toc,
+        include_related=include_related,
+        top_k=5,
     )
 
     # Ensure output directory exists
@@ -111,6 +118,11 @@ def main():
         "--no-toc",
         action="store_true",
         help="Skip the table of contents.",
+    )
+    parser.add_argument(
+        "--no-related",
+        action="store_true",
+        help="Skip related scriptures (faster export, no AI lookup).",
     )
 
     args = parser.parse_args()
@@ -167,6 +179,7 @@ def main():
             args.output,
             group_by_book=not args.flat,
             include_toc=not args.no_toc,
+            include_related=not args.no_related,
         )
     )
 
