@@ -1,4 +1,7 @@
-"""Core extraction logic for YouVersion notes and highlights."""
+"""Core extraction logic for YouVersion notes and highlights.
+
+Version: 0.2.0 — progress callbacks, typed errors.
+"""
 
 from datetime import datetime
 from typing import Any, Callable, Optional
