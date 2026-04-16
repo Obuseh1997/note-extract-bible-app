@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from extractor import authenticate_password, extract_all
+from extractor import AuthError, NetworkError, authenticate_password, extract_all
 from formatter import format_markdown
 
 
@@ -31,18 +31,37 @@ def get_token_instructions() -> str:
 """
 
 
-async def run_export(token: str, user_id: int, output_path: str) -> None:
+async def run_export(
+    token: str,
+    user_id: int,
+    output_path: str,
+    group_by_book: bool,
+    include_toc: bool,
+) -> None:
     """Run the full export pipeline."""
     print("\nStarting export...\n")
 
-    data = await extract_all(token, user_id)
+    def progress_cb(kind: str, page: int, items_on_page: int, total_so_far: int):
+        label = "Notes" if kind == "note" else "Highlights"
+        print(f"  {label}: page {page} fetched ({items_on_page} items, {total_so_far} total)")
+
+    try:
+        data = await extract_all(token, user_id, progress=progress_cb)
+    except AuthError as e:
+        print(f"\nAuth error: {e}")
+        sys.exit(1)
+    except NetworkError as e:
+        print(f"\nNetwork error: {e}")
+        sys.exit(1)
 
     total = len(data["notes"]) + len(data["highlights"])
     if total == 0:
-        print("No notes or highlights found. Check your credentials and try again.")
+        print("\nNo notes or highlights found. Check your credentials and try again.")
         sys.exit(1)
 
-    markdown = format_markdown(data)
+    markdown = format_markdown(
+        data, group_by_book=group_by_book, include_toc=include_toc
+    )
 
     # Ensure output directory exists
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -83,6 +102,16 @@ def main():
         "--password",
         help="YouVersion password (for password-based auth).",
     )
+    parser.add_argument(
+        "--flat",
+        action="store_true",
+        help="Output as a flat chronological list instead of grouped by book.",
+    )
+    parser.add_argument(
+        "--no-toc",
+        action="store_true",
+        help="Skip the table of contents.",
+    )
 
     args = parser.parse_args()
 
@@ -97,6 +126,12 @@ def main():
         try:
             token, user_id = asyncio.run(authenticate_password(username, password))
             print(f"Authenticated as user {user_id}")
+        except AuthError as e:
+            print(f"Authentication failed: {e}")
+            sys.exit(1)
+        except NetworkError as e:
+            print(f"Network error: {e}")
+            sys.exit(1)
         except Exception as e:
             print(f"Authentication failed: {e}")
             sys.exit(1)
@@ -125,7 +160,15 @@ def main():
             print("Invalid user ID. Must be a number.")
             sys.exit(1)
 
-    asyncio.run(run_export(token, int(user_id), args.output))
+    asyncio.run(
+        run_export(
+            token,
+            int(user_id),
+            args.output,
+            group_by_book=not args.flat,
+            include_toc=not args.no_toc,
+        )
+    )
 
 
 if __name__ == "__main__":
