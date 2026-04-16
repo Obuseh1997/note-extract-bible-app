@@ -13,9 +13,9 @@ st.set_page_config(
     layout="centered",
 )
 
-st.title("YouVersion Notes & Highlights Exporter")
+st.title("YouVersion Notes Exporter")
 st.markdown(
-    "Export your Bible notes and highlights from YouVersion as a clean markdown file. "
+    "Export your Bible notes from YouVersion as a clean markdown file. "
     "**No data is stored** \u2014 everything happens in your browser session."
 )
 
@@ -125,20 +125,19 @@ if token and user_id:
     # Streamlit-aware progress callback
     # We can't know total pages in advance, so we just show counts
     def make_progress_callback():
-        counts = {"note": 0, "highlight": 0, "last_page": {}}
+        counts = {"note": 0, "last_page": {}}
 
         def cb(kind: str, page: int, items_on_page: int, total_so_far: int):
             counts[kind] = total_so_far
             counts["last_page"][kind] = page
-            label = "Notes" if kind == "note" else "Highlights"
             status_text.markdown(
-                f"**Fetching {label}** — page {page}, "
-                f"{total_so_far} items collected so far..."
+                f"**Fetching notes** — page {page}, "
+                f"{total_so_far} notes collected so far..."
             )
             # Rough progress: jump forward as pages complete (we don't know total)
             progress_bar.progress(
-                min(0.95, 0.1 + (counts["note"] + counts["highlight"]) / 500.0),
-                text=f"Fetching data ({counts['note']} notes, {counts['highlight']} highlights)",
+                min(0.95, 0.1 + counts["note"] / 500.0),
+                text=f"Fetching data ({counts['note']} notes)",
             )
 
         return cb
@@ -166,12 +165,11 @@ if token and user_id:
     progress_bar.progress(1.0, text="Formatting markdown...")
 
     total_notes = len(data["notes"])
-    total_highlights = len(data["highlights"])
 
-    if total_notes + total_highlights == 0:
+    if total_notes == 0:
         progress_bar.empty()
         status_text.empty()
-        st.warning("No notes or highlights found. Double-check your credentials.")
+        st.warning("No notes found. Double-check your credentials.")
         st.stop()
 
     if include_related:
@@ -188,9 +186,7 @@ if token and user_id:
     progress_bar.empty()
     status_text.empty()
 
-    st.success(
-        f"Found **{total_notes} notes** and **{total_highlights} highlights**"
-    )
+    st.success(f"Found **{total_notes} notes**")
 
     st.download_button(
         label="Download Markdown File",

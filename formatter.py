@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 # Canonical book order (66 books) for sorting
 BOOK_ORDER = [
@@ -47,59 +47,6 @@ def slugify(text: str) -> str:
     return slug
 
 
-def _render_note_entry(item: dict[str, Any]) -> list[str]:
-    """Render a single note entry to markdown lines."""
-    lines = []
-    ref = item["reference"]
-    translation = item.get("version", "")
-    note_text = item.get("note", "")
-    date = item.get("date", "")
-
-    header = f"### {ref}"
-    if translation:
-        header += f" ({translation})"
-    if date:
-        header += f"  <sub>{date}</sub>"
-    lines.append(header)
-    lines.append("")
-
-    if note_text:
-        lines.append(f"**My note:** {note_text}")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    return lines
-
-
-def _render_highlight_entry(item: dict[str, Any]) -> list[str]:
-    """Render a single highlight entry to markdown lines."""
-    lines = []
-    ref = item["reference"]
-    translation = item.get("version", "")
-    color_emoji = item.get("color_emoji", "")
-    note_text = item.get("note", "")
-    date = item.get("date", "")
-
-    header = f"### {ref}"
-    if translation:
-        header += f" ({translation})"
-    if color_emoji:
-        header += f" {color_emoji}"
-    if date:
-        header += f"  <sub>{date}</sub>"
-    lines.append(header)
-    lines.append("")
-
-    if note_text:
-        lines.append(f"**My note:** {note_text}")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    return lines
-
-
 def format_markdown(
     data: dict[str, list[dict[str, Any]]],
     group_by_book: bool = True,
@@ -107,13 +54,14 @@ def format_markdown(
     include_related: bool = False,
     top_k: int = 5,
 ) -> str:
-    """Convert extracted notes and highlights to a markdown string.
+    """Convert extracted notes to a markdown string.
 
     Args:
-        data: Dict with 'notes' and 'highlights' from extract_all()
-        group_by_book: If True, group entries by Bible book (canonical order).
-                       If False, output as a flat chronological list.
-        include_toc: If True, prepend a table of contents.
+        data: Dict with 'notes' list from extract_all()
+        group_by_book: Group by Bible book in canonical order (default True).
+        include_toc: Prepend a clickable table of contents (default True).
+        include_related: Surface related scriptures under each note (default False).
+        top_k: Number of related scriptures per note.
 
     Returns:
         Formatted markdown string.
@@ -121,93 +69,51 @@ def format_markdown(
     lines = []
     today = datetime.now().strftime("%Y-%m-%d")
 
-    lines.append("# My YouVersion Notes & Highlights")
+    lines.append("# My YouVersion Notes")
     lines.append(f"Exported: {today}")
     lines.append("")
 
     notes = data.get("notes", [])
-    highlights = data.get("highlights", [])
-
-    lines.append(f"**{len(notes)} notes** | **{len(highlights)} highlights**")
+    lines.append(f"**{len(notes)} notes**")
     lines.append("")
 
     if not group_by_book:
-        return _format_flat(lines, notes, highlights)
+        return _format_flat(lines, notes, include_related, top_k)
 
-    # Group by book
+    # Group notes by book
     notes_by_book: dict[str, list[dict[str, Any]]] = {}
-    highlights_by_book: dict[str, list[dict[str, Any]]] = {}
-
     for n in notes:
         book = extract_book_name(n["reference"])
         notes_by_book.setdefault(book, []).append(n)
 
-    for h in highlights:
-        book = extract_book_name(h["reference"])
-        highlights_by_book.setdefault(book, []).append(h)
-
     # TOC
-    if include_toc and (notes_by_book or highlights_by_book):
+    if include_toc and notes_by_book:
         lines.append("## Table of Contents")
         lines.append("")
-
-        if notes_by_book:
-            lines.append("**Notes**")
-            for book in sorted(notes_by_book.keys(), key=book_sort_key):
-                count = len(notes_by_book[book])
-                anchor = slugify(f"notes-{book}")
-                lines.append(f"- [{book}](#{anchor}) ({count})")
-            lines.append("")
-
-        if highlights_by_book:
-            lines.append("**Highlights**")
-            for book in sorted(highlights_by_book.keys(), key=book_sort_key):
-                count = len(highlights_by_book[book])
-                anchor = slugify(f"highlights-{book}")
-                lines.append(f"- [{book}](#{anchor}) ({count})")
-            lines.append("")
-
+        for book in sorted(notes_by_book.keys(), key=book_sort_key):
+            count = len(notes_by_book[book])
+            anchor = slugify(f"notes-{book}")
+            lines.append(f"- [{book}](#{anchor}) ({count})")
+        lines.append("")
         lines.append("---")
         lines.append("")
 
-    # Notes section
-    if notes_by_book:
-        lines.append("## Notes")
+    # Notes grouped by book
+    for book in sorted(notes_by_book.keys(), key=book_sort_key):
+        lines.append(f"### {book}")
         lines.append("")
-
-        for book in sorted(notes_by_book.keys(), key=book_sort_key):
-            lines.append(f"### {book}")
-            lines.append("")
-            for item in notes_by_book[book]:
-                lines.extend(_render_item_under_book(
-                    item, kind="note",
-                    include_related=include_related, top_k=top_k,
-                ))
-
-    # Highlights section
-    if highlights_by_book:
-        lines.append("## Highlights")
-        lines.append("")
-
-        for book in sorted(highlights_by_book.keys(), key=book_sort_key):
-            lines.append(f"### {book}")
-            lines.append("")
-            for item in highlights_by_book[book]:
-                lines.extend(_render_item_under_book(
-                    item, kind="highlight",
-                    include_related=False,
-                ))
+        for item in notes_by_book[book]:
+            lines.extend(_render_note(item, include_related=include_related, top_k=top_k))
 
     return "\n".join(lines)
 
 
-def _render_item_under_book(
+def _render_note(
     item: dict[str, Any],
-    kind: str,
     include_related: bool = False,
     top_k: int = 5,
 ) -> list[str]:
-    """Render an item nested under a book heading (uses #### for ref)."""
+    """Render a single note entry."""
     lines = []
     ref = item["reference"]
     translation = item.get("version", "")
@@ -217,14 +123,12 @@ def _render_item_under_book(
     header = f"#### {ref}"
     if translation:
         header += f" ({translation})"
-    if kind == "highlight" and item.get("color_emoji"):
-        header += f" {item['color_emoji']}"
     if date:
         header += f"  <sub>{date}</sub>"
     lines.append(header)
     lines.append("")
 
-    # Noted verse text (KJV) — pulled from the Bible index
+    # KJV verse text from local index
     try:
         from scripture_search import get_verse_text
         verse_text = get_verse_text(ref)
@@ -232,14 +136,14 @@ def _render_item_under_book(
             lines.append(f"> *{verse_text}*")
             lines.append("")
     except Exception:
-        pass  # Index not available — skip silently
+        pass
 
     if note_text:
         lines.append(f"**My note:** {note_text}")
         lines.append("")
 
-    # Related scriptures (notes only, not highlights)
-    if include_related and kind == "note" and note_text:
+    # Related scriptures
+    if include_related and note_text:
         try:
             from scripture_search import find_related
             related = find_related(note_text, top_k=top_k, exclude_ref=ref)
@@ -250,7 +154,7 @@ def _render_item_under_book(
                     lines.append(f"- **{r['reference']}** — *{r['snippet']}*")
                 lines.append("")
         except Exception:
-            pass  # Index not available — skip silently
+            pass
 
     return lines
 
@@ -258,24 +162,14 @@ def _render_item_under_book(
 def _format_flat(
     lines: list[str],
     notes: list[dict[str, Any]],
-    highlights: list[dict[str, Any]],
+    include_related: bool,
+    top_k: int,
 ) -> str:
-    """Original flat-list layout — kept as an opt-out of book grouping."""
-    if notes:
+    """Flat chronological list layout."""
+    lines.append("---")
+    lines.append("")
+    for item in notes:
+        lines.extend(_render_note(item, include_related=include_related, top_k=top_k))
         lines.append("---")
         lines.append("")
-        lines.append("## Notes")
-        lines.append("")
-        for item in notes:
-            lines.extend(_render_note_entry(item))
-
-    if highlights:
-        if not notes:
-            lines.append("---")
-            lines.append("")
-        lines.append("## Highlights")
-        lines.append("")
-        for item in highlights:
-            lines.extend(_render_highlight_entry(item))
-
     return "\n".join(lines)

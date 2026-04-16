@@ -43,8 +43,7 @@ async def run_export(
     print("\nStarting export...\n")
 
     def progress_cb(kind: str, page: int, items_on_page: int, total_so_far: int):
-        label = "Notes" if kind == "note" else "Highlights"
-        print(f"  {label}: page {page} fetched ({items_on_page} items, {total_so_far} total)")
+        print(f"  Notes: page {page} fetched ({items_on_page} items, {total_so_far} total)")
 
     try:
         data = await extract_all(token, user_id, progress=progress_cb)
@@ -55,9 +54,9 @@ async def run_export(
         print(f"\nNetwork error: {e}")
         sys.exit(1)
 
-    total = len(data["notes"]) + len(data["highlights"])
+    total = len(data["notes"])
     if total == 0:
-        print("\nNo notes or highlights found. Check your credentials and try again.")
+        print("\nNo notes found. Check your credentials and try again.")
         sys.exit(1)
 
     if include_related:
@@ -78,9 +77,8 @@ async def run_export(
 
     abs_path = str(Path(output_path).resolve())
     print(f"\nExport complete!")
-    print(f"  Notes:      {len(data['notes'])}")
-    print(f"  Highlights: {len(data['highlights'])}")
-    print(f"  Output:     {abs_path}")
+    print(f"  Notes:  {len(data['notes'])}")
+    print(f"  Output: {abs_path}")
 
 
 def main():

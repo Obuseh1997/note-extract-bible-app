@@ -210,39 +210,22 @@ async def extract_all(
     user_id: int,
     progress: Optional[ProgressCallback] = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Extract all notes and highlights from YouVersion.
+    """Extract all notes from YouVersion.
 
-    Returns dict with 'notes' and 'highlights' keys.
+    Returns dict with 'notes' key.
     """
     raw_notes = await fetch_all_items(
         token, user_id, kind="note", progress=progress
-    )
-    raw_highlights = await fetch_all_items(
-        token, user_id, kind="highlight", progress=progress
     )
 
     notes = [
         {
             "reference": (p := parse_reference(m))[0],
             "version": p[1],
-            "verse_text": parse_verse_text(m),
             "note": parse_note_body(m),
             "date": parse_created_date(m),
         }
         for m in raw_notes
     ]
 
-    highlights = [
-        {
-            "reference": (p := parse_reference(m))[0],
-            "version": p[1],
-            "verse_text": parse_verse_text(m),
-            "color": parse_color(m),
-            "color_emoji": color_emoji(parse_color(m)),
-            "note": parse_note_body(m),
-            "date": parse_created_date(m),
-        }
-        for m in raw_highlights
-    ]
-
-    return {"notes": notes, "highlights": highlights}
+    return {"notes": notes}
