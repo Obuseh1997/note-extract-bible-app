@@ -146,7 +146,7 @@ def _render_note(
     if include_related and note_text:
         try:
             from scripture_search import find_related
-            related = find_related(note_text, top_k=top_k, exclude_ref=ref)
+            related = find_related(verse_text or note_text, top_k=top_k, exclude_ref=ref)
             if related:
                 lines.append("🔗 **Related scriptures**")
                 lines.append("")
